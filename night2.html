@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Five Nights at Jacob's</title>
+<style>
+  body {
+    margin: 0;
+    background: black;
+    color: white;
+    font-family: Arial, sans-serif;
+    user-select: none;
+  }
+  #gameCanvas {
+    display: block;
+    margin: auto;
+    background: #222;
+  }
+  #menu {
+    text-align: center;
+    margin-top: 30px;
+  }
+  #menu button {
+    margin: 5px;
+    padding: 10px 20px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  #menu button.locked {
+    background: #555;
+    color: #999;
+    cursor: default;
+  }
+  #instructions {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 14px;
+    color: #bbb;
+  }
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <h1>FNaF Game - Select Night</h1>
+  <div id="nightButtons"></div>
+  <div id="instructions">
+    <p>Press 1-5 to select a night (if unlocked)</p>
+    <p>In game: Press <b>space</b> to toggle cameras, 1-6 to switch cams, <b>Escape</b> to return to office</p>
+  </div>
+</div>
+
+<canvas id="gameCanvas" width="1650" height="900" style="display:none;"></canvas>
+
+<script>
+(() => {
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+
+  const jumpscareSound = new Audio("jumpscaresoundtest.mp3");
+  jumpscareSound.volume = 1.0; // Adjust volume if needed
+
+  // Game state
+  const MAX_NIGHTS = 1;
+  let unlockedNights = [1]; // Only night 1 unlocked initially
+  let currentNight = null;
+  let gameState = "menu"; // "menu" | "playing" | "camera"
+  let currentView = "office"; // "office" or camera number 1-6
+  let currentCamera = 1;
+  let lastPowerUpdateTime = Date.now();
+  let nightStartTime = null;
+  let currentHour = 12; // Starts at 12 AM
+  let hourDisplay = "12:00 AM";
+  let defendingAnimatronics = {};
+  let fuseBoxBroken = false;
+  let fuseRepairStart = null;
+  let jumpscareActive = false;
+  let jumpscareImage = null;
+  const overlayImg = new Image();
+  overlayImg.src = "cammap.png"; // Replace with your image path
+  const enterOfficeSound = new Audio("doorunlock.mp3");
+  const flashlightImg = new Image();
+  flashlightImg.src = "flight.png"; // Replace with your actual image path
+  const leaveOfficeSound = new Audio("bonk.mp3");
+  const camToggleSound = new Audio("camsound.mp3");
+  const doorToggleSound = new Audio("doorsound.mp3");
+  const lightToggleSound = new Audio("click.mp3");
+  const ambientNightSound = new Audio("ambient.mp3");
+  const samSwitchSound = new Audio("samswith.mp3");
+  const fuseBreakSound = new Audio("electric.mp3"); // Update path as needed
+  const fuseFixSound = new Audio("fixele.mp3");
+  fuseBreakSound.volume = 0.7; // Optional: set volume
+  const fuseBoxImage = new Image();
+  fuseBoxImage.src = "fuzebox.png"; // make sure path is correct
+  ambientNightSound.loop = true;
+  const warningImg = new Image();
+  warningImg.src = "warner.png"; // replace with your path
+  const moveSounds = {
+  "Evan": new Audio("evanmove.mp3"),
+  "Jacob": new Audio("jacobmove.mp3"),
+  "Hunter": new Audio("huntermove.mp3"),
+  "Siren": new Audio("sirenmove.mp3"),
+  // add more animatronics here
+  };
+  const jumpscareImages = {
+  Jacob: new Image(),
+  Siren: new Image(),
+  Evan: new Image(),
+  Joe: new Image(),
+  };
+
+  jumpscareImages.Jacob.src = "jacobscare.png";
+  jumpscareImages.Siren.src = "konker.png";
+  jumpscareImages.Evan.src = "evanscare.png";
+  jumpscareImages.Joe.src = "joescare.png";
+
+  const jumpscareSounds = {
+  Jacob: new Audio("jacobscare.mp3"),
+  Siren: new Audio("sirenscare.mp3"),
+  Evan: new Audio("evanscare.mp3"),
+  Joe: new Audio("joescare.mp3"),
+  };
+
+  function updatePower() {
+  const now = Date.now();
+  const deltaTime = (now - lastPowerUpdateTime) / 1000;
+  lastPowerUpdateTime = now;
+
+  let drain = 0.08;
+
+  if (currentView !== "office") drain += 0.22;
+  if (lightOn) drain += 0.2;
+
+  for (let key in doors) {
+    if (doors[key]) drain += 0.5;
+  }
+
+  power -= drain * deltaTime;
+
+  if (power > 101) power = 101;
+  if (power <= 0) {
+    power = 0;
+    lightOn = false;
+    doors.left = false;
+    doors.middle = false;
+    doors.right = false;
+    if (currentView !== "office") currentView = "office";
+  }
+}
+
+  let jumpscareTriggered = false;
+  let jumpscareStartTime = 0;
+  let inOfficeTimers = {}; // Track how long each animatronic stays in the office
+
+  const doorImages = {
+  left: new Image(),
+  middle: new Image(),
+  right: new Image(),
+  };
+  doorImages.left.src = "door_left.png";    // Add your door images with these names or change as needed
+  doorImages.middle.src = "door_middle.png";
+  doorImages.right.src = "door_right.png";
+
+  let power = 101;
+  let powerDrainRate = 0.04; // Adjust this to control how fast power drains
+  let lastPowerUpdate = Date.now();
+  let lightOn = false;
+  let doors = {
+  left: false,    // door 1, toggled by 'A'
+  middle: false,  // door 2, toggled by 'S'
+  right: false,   // door 3, toggled by 'D'
+};
+
+  // Load images
+  const officeImg = new Image();
+  officeImg.src = "officenorm.png";
+
+  const camImages = [];
+  for(let i=1; i<=6; i++) {
+    const img = new Image();
+    img.src = `cam${i}.png`;
+    camImages.push(img);
+  }
+
+  // Animatronic images
+  const animatronicImages = {
+    "Evan": new Image(),
+    "Jacob": new Image(),
+    "Hunter": new Image(),
+    "Siren": new Image(),
+    "Joe": new Image(),
+    // Add more animatronics here as needed
+  };
+  animatronicImages["Evan"].src = "evan.png";
+  animatronicImages["Jacob"].src = "jacob.png";
+  animatronicImages["Hunter"].src = "itsme.png";
+  animatronicImages["Siren"].src = "sirenhead.png";
+  animatronicImages["Joe"].src = "joemc.png";
+
+  // Animatronics data
+  const animatronics = [
+    {
+  name: "Evan",
+  baseDifficulty: 5,
+  path: ["cam2", "cam6", "cam5", "cam1", "office"],
+  officePosition: "left",
+  positionIndex: -1,
+  prevPosition: null,
+  scale: 0.2,
+  silentEntry: true,
+  lastMove: 0,
+  moveInterval: 5000,
+  maxOfficeTime: 6000, // 3 seconds
+    },
+    {
+  name: "Siren",
+  baseDifficulty: 2,
+  path: ["cam5", "cam2", "cam1", "office"],
+  officePosition: "right",
+  positionIndex: -1,
+  prevPosition: null,
+  scale: 0.2,
+  silentEntry: true,
+  lastMove: 0,
+  moveInterval: 9000,
+  maxOfficeTime: 9000, // 3 seconds
+    },
+    {
+  name: "Joe",
+  positionIndex: -1, // unused
+  path: [], // unused
+  lastMove: 0, // unused
+  baseDifficulty: 0, // unused
+  moveInterval: 0, // unused
+  opacity: 0, // start fully invisible
+},
+    {
+  name: "Jacob",
+  baseDifficulty: 6,
+  path: ["cam3", "cam6", "cam2", "cam1", "office"],
+  officePosition: "middle",
+  positionIndex: -1,
+  prevPosition: null,
+  scale: .15,
+  silentEntry: false,
+  lastMove: 0,
+  moveInterval: 4150,
+  maxOfficeTime: 4750, // 3 seconds
+    },
+    {
+  name: "Hunter",
+  baseDifficulty: 3,
+  path: ["cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", "cam4", "cam2", "cam6", "cam3", ],
+  officePosition: "middle",
+  positionIndex: -1,
+  prevPosition: null,
+  scale: .15,
+  silentEntry: false,
+  lastMove: 0,
+  moveInterval: 8000,
+  maxOfficeTime: 5000, // 3 seconds
+    }
+  ];
+
+  // Setup menu buttons
+  const nightButtonsDiv = document.getElementById("nightButtons");
+  function setupMenu() {
+    nightButtonsDiv.innerHTML = "";
+    for(let i=1; i<=MAX_NIGHTS; i++) {
+      const btn = document.createElement("button");
+      btn.textContent = `Night ${i}`;
+      if (!unlockedNights.includes(i)) {
+        btn.classList.add("locked");
+        btn.disabled = true;
+      }
+      btn.onclick = () => {
+        if (unlockedNights.includes(i)) {
+          currentNight = i;
+          resetAnimatronics();
+          startGame();
+        }
+      };
+      nightButtonsDiv.appendChild(btn);
+    }
+  }
+
+  // Reset animatronic positions and difficulties for new night
+  function resetAnimatronics() {
+    animatronics.forEach(anim => {
+      anim.positionIndex = 0;
+      anim.lastMove = 0;
+      anim.difficulty = anim.difficulty 
+      });
+  }
+
+  function startGame() {
+    document.getElementById("menu").style.display = "none";
+    canvas.style.display = "block";
+    gameState = "playing";
+    currentView = "office";
+    currentCamera = 1;
+    nightStartTime = Date.now(); // ✅ Start the timer
+    currentHour = 12;
+    hourDisplay = "12:00 AM";
+    ambientNightSound.currentTime = 0;
+    ambientNightSound.play();
+    ambientNightSound.volume = 0.075
+    animatronics.forEach(anim => {
+    anim.lastMove = Date.now();
+    });
+    draw();
+  }
+
+  // Center image on canvas helper
+  function drawCenteredImage(img, scale = 0.32) {
+  const scaledWidth = img.width * scale;
+  const scaledHeight = img.height * scale;
+  const x = (canvas.width - scaledWidth) / 2;
+  const y = (canvas.height - scaledHeight) / 2;
+  ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+}
+
+  // Draw animatronics if on current view
+function drawAnimatronics() {
+  animatronics.forEach(anim => {
+    const pos = anim.path[anim.positionIndex];
+    const img = animatronicImages[anim.name];
+    if (!img.complete) return;
+
+    const scale = anim.scale || 0.1;
+    const width = img.width * scale;
+    const height = img.height * scale;
+
+    if ((currentView === "office" && pos === "office") || pos === `cam${currentCamera}`) {
+      if (currentView === "office") {
+        // This is handled by drawOfficeAnimatronics already
+        return;
+      }
+
+      // Centered drawing for camera views
+      const x = (canvas.width - width) / 2;
+      const y = (canvas.height - height) / 2;
+      ctx.drawImage(img, x, y, width, height);
+    }
+  });
+}
+
+let gameOver = false;
+
+function checkOfficeThreat() {
+  const now = Date.now();
+
+  if (gameOver) return; // 🛑 Don't do anything if game is over
+
+  animatronics.forEach(an => {
+    const isInOffice = an.path[an.positionIndex] === "office";
+    const doorPosition = an.officePosition;
+
+    if (isInOffice) {
+      if (doors[doorPosition]) {
+        // Door is closed → start defense timer
+        if (!defendingAnimatronics[an.name]) {
+          defendingAnimatronics[an.name] = now;
+        } else if (now - defendingAnimatronics[an.name] > 3000) {
+          // Successfully defended → reset animatronic
+          leaveOfficeSound.currentTime = 0;
+          leaveOfficeSound.play();
+
+          an.positionIndex = 0;
+          inOfficeTimers[an.name] = null;
+          defendingAnimatronics[an.name] = null;
+          console.log(`${an.name} repelled!`);
+        }
+      } else {
+        // Door is open → start countdown to jumpscare
+        defendingAnimatronics[an.name] = null;
+        if (!inOfficeTimers[an.name]) {
+          inOfficeTimers[an.name] = now;
+        } else if (now - inOfficeTimers[an.name] > an.maxOfficeTime) {
+          gameOver = true; // 🛑 Prevent future triggers
+          triggerJumpscare(an.name);
+        }
+      }
+    } else {
+      // Not in office
+      inOfficeTimers[an.name] = null;
+      defendingAnimatronics[an.name] = null;
+    }
+  });
+}
+
+  // Draw functions
+function drawOffice() {
+  if (officeImg.complete) {
+    drawCenteredImage(officeImg);
+  } else {
+    ctx.fillStyle = "#444";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Base UI elements
+  ctx.fillStyle = "white";
+  ctx.font = "24px Arial";
+  ctx.fillText(hourDisplay, canvas.width - 140, 40);
+  ctx.fillText(`Office - Night ${currentNight}`, 20, 40);
+  ctx.font = "16px Arial";
+  ctx.fillText("Press C to toggle cameras", 20, canvas.height - 40);
+  ctx.fillText(`Power: ${Math.floor(power)}%`, 20, 70);
+
+const joe = animatronics.find(a => a.name === "Joe");
+if (joe && joe.opacity >= 0.85 && joe.opacity < 1 && !jumpscareTriggered) {
+  ctx.drawImage(warningImg, 800, 200, 160, 110); 
+}
+const joeImg = animatronicImages["Joe"];
+
+if (joe && joeImg && joeImg.complete) {
+  ctx.save();
+  ctx.globalAlpha = joe.opacity;
+  ctx.drawImage(joeImg, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+if (lightOn) {
+  ctx.save(); // Save the current drawing state
+  ctx.globalAlpha = 0.3; // Set transparency (0 = fully transparent, 1 = fully opaque)
+  ctx.drawImage(flashlightImg, 0, 0, canvas.width, canvas.height);
+  ctx.restore(); // Restore original drawing state
+}
+
+  // 🚫 Remove this line (camera animatronics shouldn't show in office)
+  // drawAnimatronics();
+
+  // ✅ Draw animatronics FIRST
+  drawOfficeAnimatronics();
+
+  // ✅ Draw doors LAST (so they appear on top)
+  drawDoors();
+
+  // ✅ If jumpscare triggered, draw it on top
+  if (jumpscareTriggered && jumpscareImage.complete) {
+    drawCenteredImage(jumpscareImage, 0.6);
+    if (Date.now() - jumpscareStartTime > 1500) {
+      resetGame();
+      return;
+    }
+  }
+
+  function drawDoors() {
+  if (doors.left && doorImages.left.complete) {
+    ctx.drawImage(doorImages.left, 200, canvas.height / 2 - 250, 300, 400);
+  }
+  if (doors.middle && doorImages.middle.complete) {
+    ctx.drawImage(doorImages.middle, canvas.width / 2 - 700, canvas.height / 2 - 465, 1400, 930);
+  }
+  if (doors.right && doorImages.right.complete) {
+    ctx.drawImage(doorImages.right, canvas.width - 500, canvas.height / 2 - 250, 300, 400);
+  }
+}
+
+  }
+
+ 
+
+ function drawOfficeAnimatronics() {
+  animatronics.forEach(anim => {
+    if (anim.path[anim.positionIndex] === "office") {
+      const img = animatronicImages[anim.name];
+      if (!img.complete) return;
+
+      const scale = anim.scale || 0.4; // Default to 0.4 if not defined
+      const width = img.width * scale;
+      const height = img.height * scale;
+
+      let x = 0;
+      let y = 0;
+
+      if (anim.officePosition === "left") {
+        x = 170;
+        y = 360;
+      } else if (anim.officePosition === "right") {
+        x = canvas.width - width - 120;
+        y = canvas.height - height - 8000;
+      } else if (anim.officePosition === "middle") {
+        x = (canvas.width - width) / 2;
+        y = canvas.height - height - 12000;
+      }
+
+      ctx.drawImage(img, x, y, width, height);
+    }
+    animatronics.forEach(anim => {
+});
+  });
+}
+
+  function drawCamera() {
+    const camImg = camImages[currentCamera - 1];
+    if (camImg.complete) {
+      drawCenteredImage(camImg);
+    } else {
+      ctx.fillStyle = "#222";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    if (currentCamera === 3 && fuseBoxBroken) {
+  ctx.drawImage(fuseBoxImage, 120, 0, 1460, 905);
+}
+    if (overlayImg.complete) {
+    // Optional scale
+    const scale = 0.12;
+    const width = overlayImg.width * scale;
+    const height = overlayImg.height * scale;
+    const x = 1200;
+    const y = 550;
+
+    ctx.drawImage(overlayImg, x, y, width, height);
+  }
+  if (jumpscareTriggered && jumpscareImage.complete) {
+    drawCenteredImage(jumpscareImage, 0.6);
+    if (Date.now() - jumpscareStartTime > 1500) {
+      resetGame();
+      return;
+    }
+  }
+    
+    ctx.fillStyle = "white";
+    ctx.font = "24px Arial";
+    ctx.fillText(`Camera ${currentCamera}`, 20, 40);
+    ctx.font = "16px Arial";
+    ctx.fillText("Press 1-6 to switch cams, Esc to return", 20, canvas.height - 40);
+    drawAnimatronics();
+    
+  }
+
+canvas.addEventListener("mousedown", (e) => {
+  if (currentCamera === 3 && fuseBoxBroken) {
+    fuseRepairStart = Date.now();
+  }
+});
+
+canvas.addEventListener("mouseup", () => {
+  fuseRepairStart = null;
+});
+
+function updateFuseBox() {
+  if (currentCamera === 3 && fuseBoxBroken && fuseRepairStart) {
+    if (Date.now() - fuseRepairStart >= 5000) {
+      fuseBoxBroken = false;
+      fuseRepairStart = null;
+      console.log("Power restored!");
+      fuseFixSound.currentTime = 0;
+      fuseFixSound.play();
+    }
+  }
+}
+
+  // Update animatronic positions every frame
+function updateAnimatronics(currentTime) {
+  animatronics.forEach(anim => {
+
+    if (anim.name === "Joe") {
+  const now = Date.now();
+  const deltaTime = now - (anim.lastVisibilityUpdate || now);
+  anim.lastVisibilityUpdate = now;
+
+  const fadeInRate = 1 / 27500;  // 100% in 20s
+  const fadeOutRate = 1 / 3500;  // 100% to 0% in 5s
+
+  if (lightOn && !fuseBoxBroken) {
+    anim.opacity = Math.max(0, anim.opacity - deltaTime * fadeOutRate);
+  } else {
+    anim.opacity = Math.min(1, anim.opacity + deltaTime * fadeInRate);
+  }
+
+  if (anim.opacity >= 1 && !jumpscareTriggered) {
+    triggerJumpscare("Joe");
+  }
+
+  return; // Skip rest of animatronic logic for Joe
+}
+
+    // Ensure lastMove is set at game start
+    if (anim.lastMove === undefined || anim.lastMove === 0) {
+      anim.lastMove = currentTime;
+      return; // Skip first frame to start countdown
+    }
+
+    const timeSinceLastMove = currentTime - anim.lastMove;
+
+    if (timeSinceLastMove >= anim.moveInterval) {
+      const roll = Math.floor(Math.random() * 20) + 1;
+      const effectiveDifficulty = anim.baseDifficulty
+
+      console.log(`[${anim.name}] Δt = ${timeSinceLastMove}ms | Roll = ${roll} | Difficulty = ${effectiveDifficulty}`);
+
+      if (roll <= effectiveDifficulty && anim.positionIndex < anim.path.length - 1) {
+        anim.lastMove = currentTime;
+        anim.prevPosition = anim.path[anim.positionIndex];
+        anim.positionIndex++;
+
+        const newPos = anim.path[anim.positionIndex];
+        console.log(`${anim.name} moved to ${newPos}`);
+
+        // Hunter disables fuse box
+        if (anim.name === "Hunter" && newPos === "cam3" && !fuseBoxBroken) {
+          fuseBoxBroken = true;
+          fuseBreakSound.currentTime = 0;
+          fuseBreakSound.play();
+          console.log("Power has been cut!");
+        }
+
+        // Movement sound
+        if (moveSounds[anim.name]) {
+          moveSounds[anim.name].currentTime = 0;
+          moveSounds[anim.name].volume = 0.05;
+          moveSounds[anim.name].play();
+        }
+
+        // Entering/leaving office
+        if (newPos === "office" && anim.prevPosition !== "office") {
+          if (!anim.silentEntry) {
+            enterOfficeSound.currentTime = 0;
+            enterOfficeSound.play();
+          }
+        } else if (anim.prevPosition === "office" && newPos !== "office") {
+          leaveOfficeSound.currentTime = 0;
+          leaveOfficeSound.play();
+        }
+
+        // Debug
+        if (["Jacob", "Hunter", "Evan", "Siren"].includes(anim.name)) {
+          console.log(`[${anim.name}] Δt = ${timeSinceLastMove}ms | Roll = ${roll} | Difficulty = ${effectiveDifficulty}`);
+        }
+
+        checkOfficeThreat();
+        checkOfficeThreat();
+        draw();
+        updateFuseBox();
+      } else {
+        anim.lastMove = currentTime;
+      }
+    }
+  });
+}
+
+setInterval(() => updateAnimatronics(Date.now()), 100);
+
+ function triggerJumpscare(animName) {
+  const img = jumpscareImages[animName];
+  const sound = jumpscareSounds[animName];
+
+  if (sound) {
+    sound.currentTime = 0;
+    sound.play();
+  }
+
+  if (img && img.complete) {
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  }
+
+  // Optionally freeze the game or show "Game Over"
+  jumpscareImage = jumpscareImages[animName]; // Assuming you have different images per animatronic
+  jumpscareActive = true;
+  gameOver = true;
+  console.log(`${animName} jumpscared you!`);
+}
+
+function resetGame() {
+  jumpscareTriggered = false;
+  gameState = "menu";
+  canvas.style.display = "none";
+  document.getElementById("menu").style.display = "block";
+
+  animatronics.forEach(an => {
+    an.positionIndex = -1;
+    an.lastMove = 0;
+  });
+  inOfficeTimers = {};
+  setupMenu();
+}
+
+  // Draw loop
+  function draw(time = 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (gameState === "playing") {
+      const now = Date.now();
+  const elapsedMinutes = Math.floor((now - nightStartTime) / 50000); // 60000 ms = 1 minute
+
+  if (elapsedMinutes >= 6) {
+    // Player survived the night
+    gameState = "menu"; // You can add a "victory" screen instead
+    alert("6:00 AM! You survived!");
+    resetGame();
+    return;
+  }
+
+  currentHour = 12 + elapsedMinutes;
+  if (currentHour > 12 && currentHour < 24) {
+    hourDisplay = `${currentHour - 12}:00 AM`;
+  } else if (currentHour === 12) {
+    hourDisplay = "12:00 AM";
+  } else if (currentHour === 18) {
+    hourDisplay = "6:00 AM";
+  } else {
+    hourDisplay = `${currentHour - 12}:00 AM`;
+  }
+  if (currentView === "office") {
+    drawOffice();
+  } else {
+    drawCamera();
+  }
+  if (jumpscareActive && jumpscareImage?.complete) {
+    ctx.drawImage(jumpscareImage, 0, 0, canvas.width, canvas.height);
+  }
+  updateAnimatronics(time);
+  updatePower();
+  checkOfficeThreat();
+  updateFuseBox(); // ✅ This checks animatronic presence in the office every frame
+}
+
+    requestAnimationFrame(draw);
+  }
+
+  // Handle keyboard
+  window.addEventListener("keydown", (e) => {
+  if (gameState === "playing") {
+    // Camera toggle
+    if (e.code == "Space") {
+      if (power > 0) {
+        currentView = currentView === "office" ? "camera" : "office";
+        camToggleSound.currentTime = 0;
+        camToggleSound.play();
+      }
+    }
+
+    // Door toggles (A, S, D) and light toggle (F)
+    if (power > 0) {
+      if (!fuseBoxBroken) {
+      if (e.key === "a" || e.key === "A") {
+        doors.left = !doors.left;
+        doorToggleSound.currentTime = 0;
+        doorToggleSound.play();
+      }
+      if (e.key === "s" || e.key === "S") {
+        doors.middle = !doors.middle;
+        doorToggleSound.currentTime = 0;
+        doorToggleSound.play();
+        doorToggleSound.volume = 0.8
+      }
+      if (e.key === "d" || e.key === "D") {
+        doors.right = !doors.right;
+        doorToggleSound.currentTime = 0;
+        doorToggleSound.play();
+      }
+      if (e.key === "f" || e.key === "F") {
+  lightOn = !lightOn;
+  lightToggleSound.currentTime = 0;
+  lightToggleSound.play();
+      }
+    }
+  }
+}
+
+canvas.addEventListener("mousedown", (e) => {
+  if (currentCamera === 3 && fuseBoxBroken) {
+    fuseRepairStart = Date.now();
+  }
+});
+
+canvas.addEventListener("mouseup", () => {
+  fuseRepairStart = null;
+});
+
+  // Camera controls (only when in camera view)
+  if (gameState === "playing" && currentView === "camera" && power > 0) {
+    if (e.key >= "1" && e.key <= "6") {
+      currentCamera = parseInt(e.key);
+      samSwitchSound.currentTime = 0;
+      samSwitchSound.play();
+      samSwitchSound.volume = 0.1
+    }
+    if (e.key === "Escape") {
+      currentView = "office";
+    }
+  }
+});
+
+  // Preload images then setup menu
+  let imagesToLoad = 1 + camImages.length + Object.keys(animatronicImages).length; // office + cams + anims
+  function imageLoaded() {
+    imagesToLoad--;
+    if (imagesToLoad === 0) {
+      setupMenu();
+    }
+  }
+  officeImg.onload = imageLoaded;
+  camImages.forEach(img => img.onload = imageLoaded);
+  Object.values(animatronicImages).forEach(img => img.onload = imageLoaded);
+
+})();
+</script>
+
+</body>
+</html>
