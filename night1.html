@@ -84,10 +84,11 @@
   flashlightImg.src = "flight.png"; // Replace with your actual image path
   const leaveOfficeSound = new Audio("bonk.mp3");
   const camToggleSound = new Audio("camsound.mp3");
-  const doorToggleSound = new Audio("doorsound.mp3");
+  const doorToggleSound = new Audio("newdoorsound.mp3");
   const lightToggleSound = new Audio("click.mp3");
   const ambientNightSound = new Audio("ambient.mp3");
   const samSwitchSound = new Audio("samswith.mp3");
+  const blindssound = new Audio("blindssounds.mp3");
   const fuseBreakSound = new Audio("electric.mp3"); // Update path as needed
   const fuseFixSound = new Audio("fixele.mp3");
   fuseBreakSound.volume = 0.7; // Optional: set volume
@@ -272,7 +273,7 @@
     hourDisplay = "12:00 AM";
     ambientNightSound.currentTime = 0;
     ambientNightSound.play();
-    ambientNightSound.volume = 0.075
+    ambientNightSound.volume = 0.065
     animatronics.forEach(anim => {
     anim.lastMove = Date.now();
     });
@@ -372,7 +373,7 @@ function drawOffice() {
   ctx.fillText(hourDisplay, canvas.width - 140, 40);
   ctx.fillText(`Office - Night ${currentNight}`, 20, 40);
   ctx.font = "16px Arial";
-  ctx.fillText("Press C to toggle cameras", 20, canvas.height - 40);
+  ctx.fillText("Press Space to toggle cameras", 20, canvas.height - 40);
   ctx.fillText(`Power: ${Math.floor(power)}%`, 20, 70);
 
 if (lightOn) {
@@ -497,7 +498,7 @@ canvas.addEventListener("mouseup", () => {
 
 function updateFuseBox() {
   if (currentCamera === 3 && fuseBoxBroken && fuseRepairStart) {
-    if (Date.now() - fuseRepairStart >= 5000) {
+    if (Date.now() - fuseRepairStart >= 4000) {
       fuseBoxBroken = false;
       fuseRepairStart = null;
       console.log("Power restored!");
@@ -675,8 +676,8 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
       if (!fuseBoxBroken) {
       if (e.key === "a" || e.key === "A") {
         doors.left = !doors.left;
-        doorToggleSound.currentTime = 0;
-        doorToggleSound.play();
+        blindssound.currentTime = 0;
+        blindssound.play();
       }
       if (e.key === "s" || e.key === "S") {
         doors.middle = !doors.middle;
@@ -686,8 +687,8 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
       if (e.key === "d" || e.key === "D") {
         doors.right = !doors.right;
-        doorToggleSound.currentTime = 0;
-        doorToggleSound.play();
+        blindssound.currentTime = 0;
+        blindssound.play();
       }
       if (e.key === "f" || e.key === "F") {
   lightOn = !lightOn;

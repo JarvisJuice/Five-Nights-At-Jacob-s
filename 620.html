@@ -602,7 +602,7 @@ canvas.addEventListener("mouseup", () => {
 
 function updateFuseBox() {
   if (currentCamera === 3 && fuseBoxBroken && fuseRepairStart) {
-    if (Date.now() - fuseRepairStart >= 5000) {
+    if (Date.now() - fuseRepairStart >= 1750) {
       fuseBoxBroken = false;
       fuseRepairStart = null;
       console.log("Power restored!");
