@@ -52,6 +52,12 @@
 </div>
 
 <canvas id="gameCanvas" width="1650" height="900" style="display:none;"></canvas>
+<img class="camera-button" data-cam="1" src="change1.png" style="display: none; position: absolute; top: 750px; left: 1540px; width: 50px; height: 50px;">
+<img class="camera-button" data-cam="2" src="change2.png" style="display: none; position: absolute; top: 690px; left: 1470px; width: 40px; height: 40px;">
+<img class="camera-button" data-cam="3" src="change3.png" style="display: none; position: absolute; top: 640px; left: 1530px; width: 40px; height: 40px;">
+<img class="camera-button" data-cam="4" src="change4.png" style="display: none; position: absolute; top: 690px; left: 1540px; width: 40px; height: 40px;">
+<img class="camera-button" data-cam="5" src="change5.png" style="display: none; position: absolute; top: 640px; left: 1410px; width: 40px; height: 40px;">
+<img class="camera-button" data-cam="6" src="change6.png" style="display: none; position: absolute; top: 640px; left: 1490px; width: 40px; height: 40px;">
 
 <script>
 (() => {
@@ -225,7 +231,7 @@
   silentEntry: true,
   lastMove: 0,
   moveInterval: 9000,
-  maxOfficeTime: 8000, // 3 seconds
+  maxOfficeTime: 9000, // 3 seconds
     },
     {
   name: "Joe",
@@ -733,6 +739,7 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
         currentView = currentView === "office" ? "camera" : "office";
         camToggleSound.currentTime = 0;
         camToggleSound.play();
+        updateCameraUI();
       }
     }
 
@@ -788,6 +795,31 @@ canvas.addEventListener("mouseup", () => {
   }
 });
 
+function updateCameraUI() {
+  const buttons = document.querySelectorAll(".camera-button");
+  buttons.forEach(button => {
+    button.style.display = (currentView === "camera") ? "block" : "none";
+  });
+}
+
+ const cameraImage = document.getElementById("cameraImage");
+
+document.querySelectorAll(".camera-button").forEach(button => {
+  button.addEventListener("click", () => {
+    if (gameState === "playing" && currentView === "camera" && power > 0) {
+      const cam = parseInt(button.getAttribute("data-cam"));
+      if (!isNaN(cam)) {
+        currentCamera = cam;
+        samSwitchSound.currentTime = 0;
+        samSwitchSound.play();
+        samSwitchSound.volume = 0.1;
+        console.log("Switched to camera", currentCamera);
+        updateCameraUI();  // Update UI after switching
+      }
+    }
+  });
+});
+
   // Preload images then setup menu
   let imagesToLoad = 1 + camImages.length + Object.keys(animatronicImages).length; // office + cams + anims
   function imageLoaded() {
@@ -805,4 +837,3 @@ canvas.addEventListener("mouseup", () => {
 
 </body>
 </html>
-
