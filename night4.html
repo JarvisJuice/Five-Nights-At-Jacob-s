@@ -202,18 +202,14 @@
     "Siren": new Image(),
     "Joe": new Image(),
     "Duck": new Image(),
-    "FakeDuck1": new Image(),
-    "FakeDuck2": new Image(),
     // Add more animatronics here as needed
   };
-  animatronicImages["Evan"].src = "finalevan.png";
+  animatronicImages["Evan"].src = "evan.png";
   animatronicImages["Jacob"].src = "jacob.png";
   animatronicImages["Hunter"].src = "itsme.png";
   animatronicImages["Siren"].src = "sirenhead.png";
   animatronicImages["Joe"].src = "joemc.png";
   animatronicImages["Duck"].src = "rd4.png";
-  animatronicImages["FakeDuck1"].src = "fakeduck.png";
-  animatronicImages["FakeDuck2"].src = "fakeduck.png";
 
   // Animatronics data
   const animatronics = [
@@ -233,40 +229,14 @@
     {
   name: "Duck",
   baseDifficulty: 4,
-  path: ["cam6", "cam4", "cam6", "cam4", "office"],
+  path: ["cam1", "office"],
   positionIndex: -1,
   prevPosition: null,
   scale: 1,
   silentEntry: true,
   lastMove: 0,
-  moveInterval: 7500,
-  maxOfficeTime: 3750, // 3 seconds
-    },
-    {
-  name: "FakeDuck1",
-  baseDifficulty: 3,
-  path: ["cam1", "cam2", "cam1", "cam2", "office", "cam1", "cam2", "cam1", "cam2", "office", "cam1", "cam2", "cam1", "cam2", "office", "cam1", "cam2", "cam1", "cam2", "office", "cam1", "cam2", "cam1", "cam2", "office", "cam1", "cam2", "cam1", "cam2", "office", "cam1", "cam2", "cam1", "cam2", "office", "cam1", "cam2", "cam1", "cam2", "office", ],
-  officePosition: "left",
-  positionIndex: -1,
-  prevPosition: null,
-  scale: 1,
-  silentEntry: true,
-  lastMove: 0,
-  moveInterval: 7500,
-  maxOfficeTime: 50000, // 3 seconds
-    },
-    {
-  name: "FakeDuck2",
-  baseDifficulty: 3,
-  path: ["cam3", "cam5", "cam3", "cam5", "office", "cam3", "cam5", "cam3", "cam5", "office", "cam3", "cam5", "cam3", "cam5", "office", "cam3", "cam5", "cam3", "cam5", "office", "cam3", "cam5", "cam3", "cam5", "office", "cam3", "cam5", "cam3", "cam5", "office", "cam3", "cam5", "cam3", "cam5", "office", "cam3", "cam5", "cam3", "cam5", "office", ],
-  officePosition: "right",
-  positionIndex: -1,
-  prevPosition: null,
-  scale: 1,
-  silentEntry: true,
-  lastMove: 0,
-  moveInterval: 7500,
-  maxOfficeTime: 50000, // 3 seconds
+  moveInterval: 6767,
+  maxOfficeTime: 1675, // 3 seconds
     },
     {
   name: "Siren",
@@ -900,4 +870,3 @@ document.querySelectorAll(".camera-button").forEach(button => {
 
 </body>
 </html>
-
