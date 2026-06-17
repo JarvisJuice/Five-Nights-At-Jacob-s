@@ -470,15 +470,15 @@ if (lightOn) {
     }
   }
 
-  function drawDoors() {
+ function drawDoors() {
   if (doors.left && doorImages.left.complete) {
-    ctx.drawImage(doorImages.left, 200, canvas.height / 2 - 250, 300, 400);
+    ctx.drawImage(doorImages.left, 284, canvas.height / 2 - 350, 287, 400);
   }
   if (doors.middle && doorImages.middle.complete) {
-    ctx.drawImage(doorImages.middle, canvas.width / 2 - 700, canvas.height / 2 - 465, 1400, 930);
+    ctx.drawImage(doorImages.middle, canvas.width / 2 + 115, canvas.height / 2 - 15, 67, 67);
   }
   if (doors.right && doorImages.right.complete) {
-    ctx.drawImage(doorImages.right, canvas.width - 500, canvas.height / 2 - 250, 300, 400);
+    ctx.drawImage(doorImages.right, canvas.width - 557, canvas.height / 2 - 345, 263, 400);
   }
 }
 
