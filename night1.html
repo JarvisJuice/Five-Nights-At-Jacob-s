@@ -128,13 +128,13 @@
   const deltaTime = (now - lastPowerUpdateTime) / 1000;
   lastPowerUpdateTime = now;
 
-  let drain = 0.08;
+ let drain = 0.04;
 
-  if (currentView !== "office") drain += 0.22;
-  if (lightOn) drain += 0.2;
+  if (currentView !== "office") drain += 0.15;
+  if (lightOn) drain += 0.22;
 
   for (let key in doors) {
-    if (doors[key]) drain += 0.5;
+    if (doors[key]) drain += 0.475;
   }
 
   power -= drain * deltaTime;
